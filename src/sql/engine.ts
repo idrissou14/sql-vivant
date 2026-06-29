@@ -1,5 +1,5 @@
-import type { Database, ExecResult, Row, SqlEngine, Cell } from './types'
-import type { CreateStatement, Expr, SelectStatement } from './ast'
+import type { Database, Effect, ExecResult, Row, SqlEngine, Cell } from './types'
+import type { CreateStatement, Expr, InsertStatement, SelectStatement } from './ast'
 import { parse } from './parser'
 import { SqlError } from './errors'
 
@@ -32,6 +32,7 @@ export function createEngine(): SqlEngine {
         switch (stmt.type) {
           case 'select': return executeSelect(stmt, db)
           case 'create': return executeCreate(stmt, db)
+          case 'insert': return executeInsert(stmt, db)
         }
       } catch (e) {
         if (e instanceof SqlError) return { ok: false, effects: [], error: e.message }
@@ -90,13 +91,107 @@ function executeCreate(stmt: CreateStatement, db: Database): ExecResult {
   if (db.tables.some((t) => t.name === stmt.table)) {
     throw new SqlError(`La table « ${stmt.table} » existe déjà.`)
   }
+
+  // Valide chaque clé étrangère : colonne locale, table et colonne référencées.
+  for (const fk of stmt.foreignKeys) {
+    if (!stmt.columns.includes(fk.column)) {
+      throw new SqlError(
+        `La clé étrangère porte sur « ${fk.column} », qui n'est pas une colonne de « ${stmt.table} ».`,
+      )
+    }
+    const refTable = db.tables.find((t) => t.name === fk.refTable)
+    if (!refTable) {
+      throw new SqlError(`La table référencée « ${fk.refTable} » n'existe pas.`)
+    }
+    if (!refTable.columns.some((c) => c.name === fk.refColumn)) {
+      throw new SqlError(
+        `La colonne « ${fk.refColumn} » n'existe pas dans la table référencée « ${fk.refTable} ».`,
+      )
+    }
+  }
+
   // Le moteur mute son état : la nouvelle table (vide) apparaît dans la base.
   db.tables.push({
     name: stmt.table,
     columns: stmt.columns.map((name) => ({ name })),
     rows: [],
+    foreignKeys: stmt.foreignKeys,
   })
   return { ok: true, effects: [{ kind: 'create', table: stmt.table }] }
+}
+
+let rowSeq = 0
+/** Identifiant de ligne unique et stable, pour pouvoir l'animer. */
+function nextRowId(): string {
+  rowSeq += 1
+  return `n${Date.now().toString(36)}-${rowSeq}`
+}
+
+function executeInsert(stmt: InsertStatement, db: Database): ExecResult {
+  const table = db.tables.find((t) => t.name === stmt.table)
+  if (!table) throw new SqlError(`La table « ${stmt.table} » n'existe pas.`)
+
+  const columnNames = table.columns.map((c) => c.name)
+  const targetCols = stmt.columns ?? columnNames
+
+  // Valide les colonnes ciblées (existence + pas de doublon).
+  const seen = new Set<string>()
+  for (const col of targetCols) {
+    if (!columnNames.includes(col)) {
+      throw new SqlError(`La colonne « ${col} » n'existe pas dans « ${table.name} ».`)
+    }
+    if (seen.has(col)) throw new SqlError(`Colonne « ${col} » citée deux fois dans l'INSERT.`)
+    seen.add(col)
+  }
+
+  // Construit toutes les lignes candidates et vérifie l'intégrité AVANT de muter (tout ou rien).
+  const newRows: Row[] = stmt.rows.map((values) => {
+    if (values.length !== targetCols.length) {
+      throw new SqlError(
+        `Le nombre de valeurs (${values.length}) ne correspond pas au nombre de colonnes (${targetCols.length}).`,
+      )
+    }
+    const cells: Record<string, Cell> = {}
+    for (const name of columnNames) cells[name] = null
+    targetCols.forEach((col, i) => {
+      cells[col] = values[i]
+    })
+
+    // Contrôle d'intégrité référentielle : chaque FK non NULL doit pointer vers une ligne existante.
+    for (const fk of table.foreignKeys ?? []) {
+      const value = cells[fk.column]
+      if (value == null) continue // une FK NULL est autorisée
+      const refTable = db.tables.find((t) => t.name === fk.refTable)
+      if (!refTable) {
+        throw new SqlError(`La table référencée « ${fk.refTable} » n'existe plus.`)
+      }
+      const found = refTable.rows.some((r) => looseEqual(r.cells[fk.refColumn], value))
+      if (!found) {
+        throw new SqlError(
+          `Violation de clé étrangère : « ${fk.column} » = ${formatValue(value)} ` +
+            `n'existe pas dans « ${fk.refTable}(${fk.refColumn}) ».`,
+        )
+      }
+    }
+
+    return { id: nextRowId(), cells }
+  })
+
+  // Mutation : ajout effectif des lignes.
+  table.rows.push(...newRows)
+
+  const effects: Effect[] = newRows.map((r) => ({
+    kind: 'insert',
+    table: table.name,
+    rowId: r.id,
+  }))
+  return { ok: true, effects, resultRows: newRows }
+}
+
+/** Formate une valeur pour un message d'erreur (texte entre apostrophes, NULL). */
+function formatValue(v: Cell): string {
+  if (v == null) return 'NULL'
+  return typeof v === 'number' ? String(v) : `'${v}'`
 }
 
 // --- Évaluation des conditions WHERE ---

@@ -16,10 +16,18 @@ export interface Column {
   name: string
 }
 
+/** Clé étrangère : `column` (locale) référence `refTable(refColumn)`. */
+export interface ForeignKey {
+  column: string
+  refTable: string
+  refColumn: string
+}
+
 export interface Table {
   name: string
   columns: Column[]
   rows: Row[]
+  foreignKeys?: ForeignKey[]
 }
 
 export interface Database {

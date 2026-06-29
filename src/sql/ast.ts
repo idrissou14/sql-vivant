@@ -1,4 +1,4 @@
-import type { Cell } from './types'
+import type { Cell, ForeignKey } from './types'
 
 export interface SelectStatement {
   type: 'select'
@@ -12,9 +12,19 @@ export interface CreateStatement {
   type: 'create'
   table: string
   columns: string[]
+  foreignKeys: ForeignKey[]
 }
 
-export type Statement = SelectStatement | CreateStatement
+export interface InsertStatement {
+  type: 'insert'
+  table: string
+  /** Colonnes ciblées si précisées ; sinon toutes les colonnes dans l'ordre. */
+  columns?: string[]
+  /** Une ou plusieurs lignes de valeurs (VALUES (...), (...)). */
+  rows: Cell[][]
+}
+
+export type Statement = SelectStatement | CreateStatement | InsertStatement
 
 /** Expression booléenne d'une clause WHERE. */
 export type Expr =

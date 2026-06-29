@@ -53,6 +53,15 @@ export function DatabaseView({ database, highlight }: DatabaseViewProps) {
             data-table={table.name}
           >
             <h3 className="db-table-name">{table.name}</h3>
+            {table.foreignKeys && table.foreignKeys.length > 0 && (
+              <ul className="db-fk-list">
+                {table.foreignKeys.map((fk) => (
+                  <li key={fk.column} className="db-fk">
+                    🔗 {fk.column} → {fk.refTable}({fk.refColumn})
+                  </li>
+                ))}
+              </ul>
+            )}
             <table>
               <thead>
                 <tr>
@@ -74,8 +83,10 @@ export function DatabaseView({ database, highlight }: DatabaseViewProps) {
                       data-row-id={row.id}
                     >
                       {table.columns.map((col) => {
-                        // Seules les colonnes projetées par le SELECT sont surlignées.
-                        const cellLit = rowLit && highlight!.columns.includes(col.name)
+                        // SELECT surligne les colonnes projetées ; INSERT surligne toute la ligne.
+                        const cellLit =
+                          rowLit &&
+                          (highlight!.kind === 'insert' || highlight!.columns.includes(col.name))
                         return (
                           <td
                             key={col.name}

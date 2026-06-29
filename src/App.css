@@ -7,6 +7,7 @@
   --effect-create: #9333ea; /* violet */
 
   --effect-select-bg: rgba(37, 99, 235, 0.16);
+  --effect-insert-bg: rgba(22, 163, 74, 0.16);
 }
 
 .app {
@@ -175,6 +176,21 @@
   color: var(--text-h);
 }
 
+.db-fk-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.db-fk {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted, #888);
+}
+
 .db-table table {
   border-collapse: collapse;
   width: 100%;
@@ -215,6 +231,28 @@
   }
   100% {
     background: var(--effect-select-bg);
+    color: var(--text-h);
+  }
+}
+
+/* --- Effet INSERT : surlignage vert de la ligne ajoutée (persistant + pulsation) --- */
+.cell-highlight.effect-insert {
+  background: var(--effect-insert-bg);
+  box-shadow: inset 0 0 0 1.5px var(--effect-insert);
+  animation: pulse-insert 0.9s ease-out;
+}
+
+@keyframes pulse-insert {
+  0% {
+    background: var(--effect-insert);
+    color: #fff;
+  }
+  55% {
+    background: var(--effect-insert);
+    color: #fff;
+  }
+  100% {
+    background: var(--effect-insert-bg);
     color: var(--text-h);
   }
 }
