@@ -1,7 +1,16 @@
 import type { Database, EffectKind } from '../sql/types'
 
+/** Lignes à surligner suite à un effet. `nonce` force le rejeu de l'animation. */
+export interface Highlight {
+  table: string
+  rowIds: string[]
+  kind: EffectKind
+  nonce: number
+}
+
 interface DatabaseViewProps {
   database: Database
+  highlight?: Highlight
 }
 
 /** Légende des couleurs par verbe — référence visuelle du langage d'effets. */
@@ -13,7 +22,7 @@ const LEGEND: { kind: EffectKind; label: string }[] = [
   { kind: 'create', label: 'CREATE' },
 ]
 
-export function DatabaseView({ database }: DatabaseViewProps) {
+export function DatabaseView({ database, highlight }: DatabaseViewProps) {
   return (
     <div className="db-view">
       <header className="pane-header">
@@ -45,15 +54,26 @@ export function DatabaseView({ database }: DatabaseViewProps) {
                 </tr>
               </thead>
               <tbody>
-                {table.rows.map((row) => (
-                  <tr key={row.id} data-row-id={row.id}>
-                    {table.columns.map((col) => (
-                      <td key={col.name} data-col={col.name}>
-                        {row.cells[col.name] ?? <span className="null">NULL</span>}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                {table.rows.map((row) => {
+                  const lit =
+                    highlight &&
+                    highlight.table === table.name &&
+                    highlight.rowIds.includes(row.id)
+                  return (
+                    <tr
+                      // Re-monte la ligne surlignée à chaque exécution pour rejouer l'animation.
+                      key={lit ? `${row.id}-h${highlight!.nonce}` : row.id}
+                      data-row-id={row.id}
+                      className={lit ? `row-highlight effect-${highlight!.kind}` : undefined}
+                    >
+                      {table.columns.map((col) => (
+                        <td key={col.name} data-col={col.name}>
+                          {row.cells[col.name] ?? <span className="null">NULL</span>}
+                        </td>
+                      ))}
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </section>

@@ -5,6 +5,8 @@
   --effect-update: #d97706; /* ambre  */
   --effect-delete: #dc2626; /* rouge  */
   --effect-create: #9333ea; /* violet */
+
+  --effect-select-bg: rgba(37, 99, 235, 0.16);
 }
 
 .app {
@@ -193,6 +195,28 @@
 .null {
   color: var(--text);
   font-style: italic;
+}
+
+/* --- Effet SELECT : surlignage bleu (persistant + pulsation au déclenchement) --- */
+.row-highlight.effect-select td {
+  background: var(--effect-select-bg);
+  box-shadow: inset 3px 0 0 var(--effect-select);
+  animation: pulse-select 0.9s ease-out;
+}
+
+@keyframes pulse-select {
+  0% {
+    background: var(--effect-select);
+    color: #fff;
+  }
+  55% {
+    background: var(--effect-select);
+    color: #fff;
+  }
+  100% {
+    background: var(--effect-select-bg);
+    color: var(--text-h);
+  }
 }
 
 /* Empilement vertical sur petit écran. */
