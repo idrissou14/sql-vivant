@@ -197,10 +197,10 @@
   font-style: italic;
 }
 
-/* --- Effet SELECT : surlignage bleu (persistant + pulsation au déclenchement) --- */
-.row-highlight.effect-select td {
+/* --- Effet SELECT : surlignage bleu des cellules projetées (persistant + pulsation) --- */
+.cell-highlight.effect-select {
   background: var(--effect-select-bg);
-  box-shadow: inset 3px 0 0 var(--effect-select);
+  box-shadow: inset 0 0 0 1.5px var(--effect-select);
   animation: pulse-select 0.9s ease-out;
 }
 

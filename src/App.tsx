@@ -27,6 +27,7 @@ function App() {
       setHighlight({
         table: select.table,
         rowIds: select.rowIds,
+        columns: select.columns,
         kind: 'select',
         nonce: Date.now(),
       })

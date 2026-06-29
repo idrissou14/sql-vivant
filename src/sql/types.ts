@@ -29,7 +29,7 @@ export interface Database {
 // --- Effets par verbe (chacun a SA couleur, gérée côté UI) ---
 // SELECT → bleu, INSERT → vert, UPDATE → ambre, DELETE → rouge, CREATE → violet.
 export type Effect =
-  | { kind: 'select'; table: string; rowIds: string[] }
+  | { kind: 'select'; table: string; rowIds: string[]; columns: string[] }
   | { kind: 'insert'; table: string; rowId: string }
   | { kind: 'update'; table: string; rowId: string; columns: string[] }
   | { kind: 'delete'; table: string; rowIds: string[] }

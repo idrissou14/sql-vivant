@@ -77,7 +77,9 @@ function executeSelect(stmt: SelectStatement, db: Database): ExecResult {
 
   return {
     ok: true,
-    effects: [{ kind: 'select', table: table.name, rowIds: matched.map((r) => r.id) }],
+    effects: [
+      { kind: 'select', table: table.name, rowIds: matched.map((r) => r.id), columns: projection },
+    ],
     resultRows,
   }
 }

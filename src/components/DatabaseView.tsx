@@ -1,9 +1,10 @@
 import type { Database, EffectKind } from '../sql/types'
 
-/** Lignes à surligner suite à un effet. `nonce` force le rejeu de l'animation. */
+/** Cellules à surligner suite à un effet. `nonce` force le rejeu de l'animation. */
 export interface Highlight {
   table: string
   rowIds: string[]
+  columns: string[]
   kind: EffectKind
   nonce: number
 }
@@ -55,22 +56,29 @@ export function DatabaseView({ database, highlight }: DatabaseViewProps) {
               </thead>
               <tbody>
                 {table.rows.map((row) => {
-                  const lit =
+                  const rowLit =
                     highlight &&
                     highlight.table === table.name &&
                     highlight.rowIds.includes(row.id)
                   return (
                     <tr
                       // Re-monte la ligne surlignée à chaque exécution pour rejouer l'animation.
-                      key={lit ? `${row.id}-h${highlight!.nonce}` : row.id}
+                      key={rowLit ? `${row.id}-h${highlight!.nonce}` : row.id}
                       data-row-id={row.id}
-                      className={lit ? `row-highlight effect-${highlight!.kind}` : undefined}
                     >
-                      {table.columns.map((col) => (
-                        <td key={col.name} data-col={col.name}>
-                          {row.cells[col.name] ?? <span className="null">NULL</span>}
-                        </td>
-                      ))}
+                      {table.columns.map((col) => {
+                        // Seules les colonnes projetées par le SELECT sont surlignées.
+                        const cellLit = rowLit && highlight!.columns.includes(col.name)
+                        return (
+                          <td
+                            key={col.name}
+                            data-col={col.name}
+                            className={cellLit ? `cell-highlight effect-${highlight!.kind}` : undefined}
+                          >
+                            {row.cells[col.name] ?? <span className="null">NULL</span>}
+                          </td>
+                        )
+                      })}
                     </tr>
                   )
                 })}
