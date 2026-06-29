@@ -1,5 +1,5 @@
 import type { Database, ExecResult, Row, SqlEngine, Cell } from './types'
-import type { Expr, SelectStatement } from './ast'
+import type { CreateStatement, Expr, SelectStatement } from './ast'
 import { parse } from './parser'
 import { SqlError } from './errors'
 
@@ -29,8 +29,10 @@ export function createEngine(): SqlEngine {
       try {
         if (sql.trim() === '') throw new SqlError('Requête vide.')
         const stmt = parse(sql)
-        // Seul SELECT existe dans l'AST pour l'instant.
-        return executeSelect(stmt, db)
+        switch (stmt.type) {
+          case 'select': return executeSelect(stmt, db)
+          case 'create': return executeCreate(stmt, db)
+        }
       } catch (e) {
         if (e instanceof SqlError) return { ok: false, effects: [], error: e.message }
         throw e
@@ -82,6 +84,19 @@ function executeSelect(stmt: SelectStatement, db: Database): ExecResult {
     ],
     resultRows,
   }
+}
+
+function executeCreate(stmt: CreateStatement, db: Database): ExecResult {
+  if (db.tables.some((t) => t.name === stmt.table)) {
+    throw new SqlError(`La table « ${stmt.table} » existe déjà.`)
+  }
+  // Le moteur mute son état : la nouvelle table (vide) apparaît dans la base.
+  db.tables.push({
+    name: stmt.table,
+    columns: stmt.columns.map((name) => ({ name })),
+    rows: [],
+  })
+  return { ok: true, effects: [{ kind: 'create', table: stmt.table }] }
 }
 
 // --- Évaluation des conditions WHERE ---

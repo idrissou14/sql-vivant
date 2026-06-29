@@ -219,6 +219,31 @@
   }
 }
 
+/* --- Effet CREATE : la table apparaît en violet --- */
+.db-table.table-appear {
+  animation: appear-create 0.7s ease-out;
+}
+
+@keyframes appear-create {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+    box-shadow: 0 0 0 2px var(--effect-create);
+  }
+  60% {
+    opacity: 1;
+    box-shadow: 0 0 0 2px var(--effect-create);
+  }
+  100% {
+    transform: none;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.db-table.effect-create .db-table-name {
+  color: var(--effect-create);
+}
+
 /* Empilement vertical sur petit écran. */
 @media (max-width: 800px) {
   .split {

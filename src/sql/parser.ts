@@ -1,6 +1,6 @@
 import { SqlError } from './errors'
 import { tokenize, type Token } from './tokenizer'
-import type { CompareOp, Expr, SelectStatement, Statement } from './ast'
+import type { CompareOp, CreateStatement, Expr, SelectStatement, Statement } from './ast'
 import type { Cell } from './types'
 
 const COMPARE_OPS = new Set(['=', '!=', '<>', '<', '>', '<=', '>='])
@@ -35,14 +35,64 @@ class Parser {
   parseStatement(): Statement {
     const t = this.peek()
     if (t.type === 'keyword' && t.value === 'SELECT') return this.parseSelect()
+    if (t.type === 'keyword' && t.value === 'CREATE') return this.parseCreate()
 
-    const unsupported = ['INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP']
+    const unsupported = ['INSERT', 'UPDATE', 'DELETE', 'DROP']
     if (t.type === 'keyword' && unsupported.includes(t.value)) {
       throw new SqlError(
-        `La commande ${t.value} n'est pas encore disponible. Seul SELECT est implémenté pour l'instant.`,
+        `La commande ${t.value} n'est pas encore disponible. SELECT et CREATE sont implémentés pour l'instant.`,
       )
     }
-    throw new SqlError('Requête invalide : elle doit commencer par SELECT.')
+    throw new SqlError('Requête invalide : elle doit commencer par SELECT ou CREATE.')
+  }
+
+  private parseCreate(): CreateStatement {
+    this.next() // CREATE
+    if (!this.isKeyword('TABLE')) throw new SqlError('Attendu CREATE TABLE <nom> (...).')
+    this.next() // TABLE
+    const table = this.expectIdentifier('un nom de table')
+
+    if (this.peek().type !== 'lparen') {
+      throw new SqlError('Attendu « ( » pour la liste des colonnes après le nom de la table.')
+    }
+    this.next() // (
+
+    const columns: string[] = []
+    if (this.peek().type === 'rparen') {
+      throw new SqlError('Une table doit avoir au moins une colonne.')
+    }
+    columns.push(this.parseColumnDef())
+    while (this.peek().type === 'comma') {
+      this.next()
+      columns.push(this.parseColumnDef())
+    }
+
+    if (this.peek().type !== 'rparen') throw new SqlError('Parenthèse fermante « ) » manquante.')
+    this.next() // )
+
+    const seen = new Set<string>()
+    for (const c of columns) {
+      if (seen.has(c)) throw new SqlError(`Colonne « ${c} » définie deux fois.`)
+      seen.add(c)
+    }
+
+    return { type: 'create', table, columns }
+  }
+
+  /** Nom de colonne, avec un type SQL optionnel (ex. INT, TEXT, VARCHAR(255)) ignoré pour l'instant. */
+  private parseColumnDef(): string {
+    const name = this.expectIdentifier('un nom de colonne')
+    // Ignore d'éventuels tokens de type jusqu'à la virgule ou la parenthèse fermante.
+    let depth = 0
+    while (true) {
+      const t = this.peek()
+      if (t.type === 'eof') break
+      if (depth === 0 && (t.type === 'comma' || t.type === 'rparen')) break
+      if (t.type === 'lparen') depth++
+      else if (t.type === 'rparen') depth--
+      this.next()
+    }
+    return name
   }
 
   expectEnd(): void {

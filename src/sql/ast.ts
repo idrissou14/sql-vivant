@@ -8,8 +8,13 @@ export interface SelectStatement {
   orderBy?: { column: string; dir: 'asc' | 'desc' }
 }
 
-// Pour l'instant seul SELECT est analysé. Les autres verbes viendront ici.
-export type Statement = SelectStatement
+export interface CreateStatement {
+  type: 'create'
+  table: string
+  columns: string[]
+}
+
+export type Statement = SelectStatement | CreateStatement
 
 /** Expression booléenne d'une clause WHERE. */
 export type Expr =

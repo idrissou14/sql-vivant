@@ -43,8 +43,15 @@ export function DatabaseView({ database, highlight }: DatabaseViewProps) {
           <p className="db-empty">Aucune table. Crée-en une avec CREATE TABLE.</p>
         )}
 
-        {database.tables.map((table) => (
-          <section key={table.name} className="db-table" data-table={table.name}>
+        {database.tables.map((table) => {
+          // Effet CREATE : la table entière apparaît en violet (re-montée via le nonce).
+          const created = highlight?.kind === 'create' && highlight.table === table.name
+          return (
+          <section
+            key={created ? `${table.name}-c${highlight!.nonce}` : table.name}
+            className={created ? 'db-table effect-create table-appear' : 'db-table'}
+            data-table={table.name}
+          >
             <h3 className="db-table-name">{table.name}</h3>
             <table>
               <thead>
@@ -85,7 +92,8 @@ export function DatabaseView({ database, highlight }: DatabaseViewProps) {
               </tbody>
             </table>
           </section>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
